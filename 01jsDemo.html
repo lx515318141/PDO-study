@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    function Peo(pname,page){
+        this.pname = pname;
+        this.page = page;
+    }
+    var lix = new Peo('lix','20')       // 每次new都会创建一个互不相同的新对象，而PDO永远是创建一个对象
+    var sue = new Peo('sue','18')
+</body>
+</html>
