@@ -79,3 +79,98 @@ if($pdo->exect($sql)){
     echo "error";
 }
 ```
+
+## 5.PDO异常处理Exception
+
+异常处理Exception是指在try...catch是发生异常时的处理手段，通常异常处理都是直接抛出提醒即可。而设置提醒的手段有三种设置方式：  
+
+(1)默认模式：  
+主要依赖于系统提供的errorCode和errorInfo方法实现  
+(2)警报模式：  
+为pdo设置setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_WARNING);  
+(3)中断模式：  
+为pdo设置setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);  
+
+小贴士：需要说明的是异常处理并不是三种模式必须有一种显式的去表现出来，哪怕一种都不主动写出也不会认为是违法。只不过主动实现异常处理能够在异常发生的时候给与我们更好的提示，因此推荐如果允许的情况下尽可能的添加异常处理模块代码。  
+
+ps：exception指的是在执行db操作的时候发生的异常，例如sql语句异常或语法错误。而如果是db链接发生的错误则不会走本异常处理，而是直接由pdo输出连接失败。
+
+## 6.PDO预处理prepare
+
+预处理语句prepare是pdo提供的一种db操作方式。其语言逻辑与正常的pdo访问相同。但区别在于prepare语句允许用户在【设置sql语句】与【执行sql语句】之间部分进行惨的注入与提取操作，而不是像正常的pdo访问一样之间将参数写死。  
+
+(1)prepare()方法和execute()方法  
+(2)bindValue()方法  
+(3)bindColumn()方法  
+
+正常pdo直接访问： 设置sql语句 -> 执行sql语句
+预处理访问： 设置sql语句 -> 预处理sql语句 -> 处理sql中参数 -> 执行sql语句
+
+### (1).prepare()方法和execute()方法
+
+描述：  
+a.prepare()方法为预处理sql语句的方法，能够让pdo预先处理【半成品的】sql语句，并生成一个PDOStatementObject类型的结果。  
+b.execute()方法是提供给PDOSO类型对象去执行的【成品】sql语句的方法，并生成一个PDOStatementObject类型的结果。  
+说明：  
+a.交由pdo去prepare预处理的【半成品】sql语句，使用？问号作为占位符，表示待传参的参数。  
+b.prepare预处理必须只能处理【半成品】sql语句，如果是完整则需要使用exec方法执行。  
+c.execute()方法允许一个数组作为参数，将参数代入到预处理的sql语句中，并且会将结果存放到PDOSO对象中。  
+d.PDOS对象在预处理的不同阶段有着不同的含义！！不可混淆，必须根据上下文判断。  
+语法：  
+```
+$sql="insert into friendslist values(?,?,?,?)";
+$pdoso=$pdo->prepare($sql);
+echo $pdoso->execute(array("lilei","male",99,12580));
+```
+
+### (2).bindValue()方法 
+
+描述：bindValue()方法是提供给pdo预处理之后得到的PDOSO对象使用的方法，用来给【半成品】的sql语句进行传值。  
+语法：`$pdoso->bindValue(index,value);`  
+说明：
+(1)第一个参数表sql语句中的第几个参数传值,即第几个问号，且不是从0开始。第一个就写1，以此类推。  
+(2)第二个参数表示给sql语句中的对应参数传的具体的值。  
+(3)bindValue()一次绑定一个参数，如果有多个则需要调用多次。  
+例子：  
+```
+$sql = "insert info userinfo values(?,?)";
+$pdoso = $pdo->prepare($sql);
+$pdoso->execute();
+$pdoso->bindValue(1,'xiaobao');
+$pdoso->bindColumn(2,'999999');
+echo $pdoso->execute();
+```
+
+### (3).bindColumn()方法 
+
+描述：bindColumn()方法允许将执行结果的一系列数据绑定到一个指定对象上，本方法需要在execute()方法执行结束后在执行。  
+语法：`$pdoso->bindColumn(index,指定变量);`
+说明：  
+(1)第一个参数表示结果中的第几列数据。第一列就写1，以此类推。  
+(2)第二个参数表示数据要赋值给那个变量，随便一个变量即可。  
+(3)bindColumn()方法一次绑定一列给变量，如需绑定多个，则执行多次即可。  
+例子：  
+```
+$sql = "select * from userinfo";
+$pdoso = $pdo->prepare($sql);
+$pdoso->execute();
+$pdoso->bindColumn(1,$username);
+$pdoso->bindColumn(2,$password);
+while($row = $pdoso->fetch(PDO::FETCH_COLUMN)){
+    echo "{$username}"."----"."$password"."<br>";
+}
+```
+
+## 7.PDO事务处理transaction
+
+事务：多个时间组成的结构。  
+事件：事件实际上就是预处理语言执行的execute语句。  
+注意：  
+(1)整个事务操作必须放到try...catch中，这是因为我们并不能保证执行的事件一定成功。而对于整个事务而言，任何一个事件的失败都会导致catch的触发，而catch触发就意味着必须将之前做出的所有的操作的必须还原。  
+回滚操作：`$pdo->rollBack()`
+(2)操作语言必须在事务开启之后执行，在事务提交之前停止。  
+开启事务：`$pdo->beginTransaction();`
+关闭事务：`$pdo->commit();`
+(3)中文处理方案(避免乱码)：  
+读取：`$pdo->query("set names utf8");`
+插入：`$pdo->exec("set names utf8");`
